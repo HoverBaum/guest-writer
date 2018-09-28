@@ -1,0 +1,251 @@
+---
+layout: post
+title: "Developing Super-Fast SPAs with choo"
+description: "Follow along as we secure a simple, Choo based application using Auth0."
+date: "2018-09-27 08:30"
+author:
+  name: "Hendrik Wallbaum"
+  url: "hoverbaum"
+  mail: "mail@hendrikwallbaum.de"
+  avatar: "https://twitter.com/hoverbaum/profile_image?size=original"
+---
+
+**TL;DR:** Briefly describe what this article is about and what the reader will achieve/learn after reading it. Please,
+also provide the link to a GitHub repository that contains code related to this article.
+
+# A simple and funn Choo app secured with Auth0
+
+Securing an application is a crucial part for every modern web app. Luckily the times of having to build your own authentication solution using PHP and MySQL databases are over. In this time an age we have great services like Auth0 to help us handle authentication. Using Auth0 we can off-load all the complexity of handling users, authenticating them and everythign else related to a third party service with awesome integrations. This saves us time when developing new applications and helps our users stay secure. After all Auth0 only focussing on authentication will do a way better job at that than we ever could while focussing on all aspects of our app.
+
+To demonstrate how easily you can integrate Auth0 into your app we are going to build a simple Choo (like the train goes choo choo) application. Users will be able to sign up and log in. After Logging in they will see an identiticon (liek teh standard GitHub avatars) generated just for them.
+
+You can check out the finished code in my [choo-auth0 repo](https://github.com/HoverBaum/choo-auth0), it uses choo ^6.13.0 and auth0-js ^9.7.2. Let's dive in.
+
+## Introduction to Choo
+
+What is Choo, why it was developed, what are its features, philosophy, etc.
+
+[Choo 🚂🚋🚋🚋🚋🚋](https://github.com/choojs/choo) is a super simple, easy to get into, 4kb big frontend framework for fun functional programming. It comes with a great handbook walking you through [your first choo app](https://handbook.choo.io/your-first-choo-app/), explaining not only about choo but web development in general. Choo wants to be your next framework, not your last. Thus focussing on using JavaScript native features as much as possible. You can also think of it as a best of Redux framework, providing a router, state management via events and rendering of your state.
+
+The thing I like most about Choo is the core philosophy it is build around.
+
+> Programming should be fun and light, not stern and stressful
+
+A simple counter application in choo looks like this:
+
+```javascript
+var html = require('choo/html')
+var devtools = require('choo-devtools')
+var choo = require('choo')
+
+var app = choo()
+app.use(devtools())
+app.use(countStore)
+app.route('/', mainView)
+app.mount('body')
+
+function mainView (state, emit) {
+  return html`
+    <body>
+      <h1>count is ${state.count}</h1>
+      <button onclick=${() => emit('increment', 1))}>Increment</button>
+    </body>
+  `
+}
+
+function countStore (state, emitter) {
+  state.count = 0
+  emitter.on('increment', function (count) {
+    state.count += count
+    emitter.emit('render')
+  })
+}
+```
+
+Choo relies on Node for dependencies thus we use `require` here instead of `import`.
+
+## Scaffolding a Choo App
+
+Describe what are the steps needed to scaffold a Choo app.
+
+Setting up our Choo application is as simple as running `npx create-choo-app choo-auth0`. Similar to *create-react-app* this script will create a basic Choo application with all required dependencies in a folder of our choosing.
+
+Take a look at the generated files. For our simple, authetnicated application presenting each user with an identicon we will:
+
+- Create views in `views`
+- Create an authentication store in `stores`
+- Add all of the above in `index.js` to strap it together
+
+You can run the application using `npm start`. Our generated application comes with a few parts we don't need, you can go ahead and:
+
+- delete the assets folder.
+- remove the `store/clicks.js` store.
+- Maybe do some cleanup by removing `manifest.json` and `sw.js` which are super nice files for production bbut not needed for a walktrough.
+
+Apart from a starting view and a 404 page Choo also comes bundles with [Tachyons](http://tachyons.io/) a lightweight CSS framework for layouting. It provides tons of classes to style and layout our application. You will likely find the classes provided by Tachyons to be quite intuitive. `paN` for example adds padding *N* (1-6)???? to an element.
+
+### Different views
+
+We are going to build two views for our application:
+
+1. main - for logged out users, living on `/`
+2. dashboard - to display after login, living on `/dashboard`
+
+Let's go ahead and create static templates for our views. First we are going to create the view to log in from.
+
+```javascript
+// views/main.js
+const html = require('choo/html')
+const TITLE = 'secured-choo - main'
+module.exports = view
+
+function view (state, emit) {
+  if (state.title !== TITLE) emit(state.events.DOMTITLECHANGE, TITLE)
+  return html`
+    <body class="lh-copy sans-serif">
+      <main class="pa3 cf center">
+        <div>
+          <h1>Please login to see the application</h1>
+
+          <button
+            class="f5 black bg-animate hover-bg-black hover-white inline-flex items-center pa3 ba border-box bg-white pointer"
+            onclick=${() => emit('auth:startAuthentication')}
+          >
+            Login
+          </button>
+        </div>        
+      </main>
+    </body>
+  `
+}
+```
+
+Note how we are using Tachyon classes to style our application and how we already decided on an event that will trigger authentication. We named it `auth:startAuthentication`. Later we will build a store that listens for this event to start the authentication process for our user.
+
+Next up is a logged in view. Here we want to display an identicon. For that we will use [identicon.js](https://github.com/stewartlord/identicon.js). In this first step we will generate an identicon for a hardcoded value which we will later swap with the users ID. Don't forget to run `npm i --save identicon.js`.
+
+```javascript
+const html = require('choo/html')
+const Identicon = require('identicon.js')
+const TITLE = 'dashboard'
+module.exports = view
+
+function view (state, emit) {
+  if (state.title !== TITLE) emit(state.events.DOMTITLECHANGE, TITLE)
+  const userId = 'Not yet a real user ID'
+  const avatarData = new Identicon(userId, 420).toString()
+  return html`
+    <body class="lh-copy sans-serif">
+      <main class="pa3 cf center">
+        <h1>Welcome to your dashboard 🎉</h1>
+
+        <p>Here is an avatar generated just for you:</p>
+
+        <img src="data:image/png;base64,${avatarData}">
+
+        <p>Let's try to log out and in again.</p>
+
+        <button
+          class="f5 black bg-animate hover-bg-black hover-white inline-flex items-center pa3 ba border-box bg-white pointer"
+          onclick=${() => emit('auth:logout')}
+        >
+          Logout
+        </button>
+
+        <p>Or <a href="/">go to the landing page</a> to see how the site interacts with logged in users.</p>
+
+      </main>
+    </body>
+  `
+}
+
+```
+
+The main view actually already existed in create-choo-app, to hook up our dashboard view make sure to add it to the application in `index.js` using 
+
+```javascript
+app.route('/dashboard', require('./views/dashboard'))
+```
+
+Again we already prepare events to log a user out again and present him also with the option to see the landig page as a logged in user (which we didn't implement yet). The second argument we are passing to `new Identicon()` is the dimension of the identicon we want to get out. Feel free to take a breather here and play around with values for our *userId*.
+
+### Mock store data
+
+Next up is the state of our application. For that we will define a store which handles our applications state. You can think of this as a build in Redux. Let's create a `stores/auth.js` store now. It will handle the two events we fired up above and provide data about a logged in user.
+
+```javascript
+// stores/auth.js
+module.exports = authStore
+
+function authStore (state, emitter) {
+  // Our initial auth state.
+  state.auth = {
+    loggedIn: false,
+    idToken: null,
+    userId: null
+  }
+
+  // Mock login and logout actions for now.
+  emitter.on('auth:startAuthentication', () => {
+    state.auth.loggedIn = true
+    state.auth.userId = 'Some totally random value for now' 
+    emitter.emit(state.events.PUSHSTATE, '/dashboard')
+  })
+
+  emitter.on('auth:logout', () => {
+    state.auth.loggedIn = false
+    state.auth.userId = ''
+    emitter.emit(state.events.PUSHSTATE, '/')
+  })
+}
+
+```
+
+Once we add this store to our app using `app.use(require('./stores/auth'))` we are good to go with our mock. Before we can see the result we need to update how we get the *userId* in our dashboard. 
+
+```javascript
+const userId = state.auth && state.auth.userId
+```
+
+Login and Logout are now working (though only hardcoded and mocked), clicking the login button will redirect you to the dashboard where you will see an identicon. You can also log out again to get back to the landing page.
+
+This is a great opportunity to add some logic to our main page differentiating between logged in and out users. Depending on `state.auth.loggedIn` we will either display the login button or some text directing the user to their dashboard.
+
+```javascript
+${!state.auth.loggedIn ? html`
+  <div>
+    <h1>Please login to see the application</h1>
+
+    <button
+      class="f5 black bg-animate hover-bg-black hover-white inline-flex items-center pa3 ba border-box bg-white pointer"
+      onclick=${() => emit('auth:startAuthentication')}
+    >
+      Login
+    </button>
+  </div>
+` : html`
+  <div>
+    <h1>You are logged in</h1>  
+
+    <a href="/dashboard">To your dashboard</a>
+  </div>
+`}
+```
+
+No magic here, just normal ES6 template literals using `${}` to introduce logic inside of strings and returning one string or another based on the *loggedIn* state.
+
+-----
+
+## Securing Your Choo App with Auth0
+
+Give a brief explanation on what is Auth0 and why are you going to use it.
+
+### Creating an Auth0 Application
+
+Describe how to create an Auth0 application on the management dashboard.
+
+### Configuring Auth0 on Choo
+
+## Conclusion and Next Steps
+
+Describe what readers have accomplished throughout this article, add references to more content, and write about where they can go from here.
