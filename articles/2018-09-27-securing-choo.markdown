@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Developing Super-Fast SPAs with choo"
+title: "Developing Super-Fast SPAs with Choo"
 description: "Follow along as we secure a simple, Choo based application using Auth0."
 date: "2018-09-27 08:30"
 author:
