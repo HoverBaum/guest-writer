@@ -10,22 +10,19 @@ author:
   avatar: "https://twitter.com/hoverbaum/profile_image?size=original"
 ---
 
-**TL;DR:** Briefly describe what this article is about and what the reader will achieve/learn after reading it. Please,
-also provide the link to a GitHub repository that contains code related to this article.
+**TL;DR:** Today we will get familiar with Choo as a super slim and fun frontend framework, build a friendly application and secure it using Auth0. Check the [working demo](https://auth0-secured-choo.netlify.com/) and [GitHub repo](https://github.com/HoverBaum/choo-auth0).
 
-# A simple and funn Choo app secured with Auth0
+# A simple and fun Choo app secured with Auth0
 
-Securing an application is a crucial part for every modern web app. Luckily the times of having to build your own authentication solution using PHP and MySQL databases are over. In this time an age we have great services like Auth0 to help us handle authentication. Using Auth0 we can off-load all the complexity of handling users, authenticating them and everythign else related to a third party service with awesome integrations. This saves us time when developing new applications and helps our users stay secure. After all Auth0 only focussing on authentication will do a way better job at that than we ever could while focussing on all aspects of our app.
+Securing an application and authenticating users is a crucial part for every modern web app. Luckily the times of having to build your own authentication solution using PHP and MySQL databases are over. In this time an age we have great services that specialize in providing authentication and authorization as a service. By focusing on this single task services are able to provide a far better solution than anybody implementing a user system as part of their app ever could. And it is super easy to integrate these services thus everyone benefits.
 
-To demonstrate how easily you can integrate Auth0 into your app we are going to build a simple Choo (like the train goes choo choo) application. Users will be able to sign up and log in. After Logging in they will see an identiticon (liek teh standard GitHub avatars) generated just for them.
+To demonstrate how easily you can integrate such a service we are going to build a simple Choo (like the train goes choo choo) application. Users will be able to sign up and log in. After Logging in they will see an identiticon (liek teh standard GitHub avatars) generated just for them. Instead of building the user system ourselfes we will let [Auth0](https://auth0.com/) handle that for us.
 
 You can check out the finished code in my [choo-auth0 repo](https://github.com/HoverBaum/choo-auth0), it uses choo ^6.13.0 and auth0-js ^9.7.2. Let's dive in.
 
 ## Introduction to Choo
 
-What is Choo, why it was developed, what are its features, philosophy, etc.
-
-[Choo 🚂🚋🚋🚋🚋🚋](https://github.com/choojs/choo) is a super simple, easy to get into, 4kb big frontend framework for fun functional programming. It comes with a great handbook walking you through [your first choo app](https://handbook.choo.io/your-first-choo-app/), explaining not only about choo but web development in general. Choo wants to be your next framework, not your last. Thus focussing on using JavaScript native features as much as possible. You can also think of it as a best of Redux framework, providing a router, state management via events and rendering of your state.
+[Choo 🚂🚋🚋🚋🚋🚋](https://github.com/choojs/choo) is a super simple, easy to get into, 4kb big frontend framework for fun functional programming. It comes with a great handbook walking you through [your first choo app](https://handbook.choo.io/your-first-choo-app/), explaining not only about choo but web development in general. Choo wants to be your next framework, not your last. Thus focussing on using JavaScript native features as much as possible aiming to be replaceable. You can also think of it as a best of Redux framework, providing a router, state management via events and rendering of your state.
 
 The thing I like most about Choo is the core philosophy it is build around.
 
@@ -62,11 +59,9 @@ function countStore (state, emitter) {
 }
 ```
 
-Choo relies on Node for dependencies thus we use `require` here instead of `import`.
+Choo relies on Node for dependencies thus we use `require` here instead of `import`. You can also see that Choo provides `emit()` as a means for components to fire events. To handle those events you can define functions to use that take the state and emitter as input and react to events by updating the state.
 
 ## Scaffolding a Choo App
-
-Describe what are the steps needed to scaffold a Choo app.
 
 Setting up our Choo application is as simple as running `npx create-choo-app choo-auth0`. Similar to *create-react-app* this script will create a basic Choo application with all required dependencies in a folder of our choosing.
 
@@ -82,7 +77,7 @@ You can run the application using `npm start`. Our generated application comes w
 - remove the `store/clicks.js` store.
 - Maybe do some cleanup by removing `manifest.json` and `sw.js` which are super nice files for production bbut not needed for a walktrough.
 
-Apart from a starting view and a 404 page Choo also comes bundles with [Tachyons](http://tachyons.io/) a lightweight CSS framework for layouting. It provides tons of classes to style and layout our application. You will likely find the classes provided by Tachyons to be quite intuitive. `paN` for example adds padding *N* (1-6)???? to an element.
+Apart from a starting view and a 404 page Choo also comes bundled with [Tachyons](http://tachyons.io/) a lightweight CSS framework for layouting. It provides tons of classes to style and layout our application. You will likely find the classes provided by Tachyons to be quite intuitive. `paX` for example adds padding *X* (1-7) to an element.
 
 ### Different views
 
@@ -167,7 +162,7 @@ The main view actually already existed in create-choo-app, to hook up our dashbo
 app.route('/dashboard', require('./views/dashboard'))
 ```
 
-Again we already prepare events to log a user out again and present him also with the option to see the landig page as a logged in user (which we didn't implement yet). The second argument we are passing to `new Identicon()` is the dimension of the identicon we want to get out. Feel free to take a breather here and play around with values for our *userId*.
+Again we already prepare events to log a user out and we are presenting him with an option to see the landig page as a logged in user (which we didn't implement yet). The second argument we are passing to `new Identicon()` is the dimension of the identicon we want to get out. Feel free to take a breather here and play around with values for our *userId*.
 
 ### Mock store data
 
@@ -232,7 +227,7 @@ ${!state.auth.loggedIn ? html`
 `}
 ```
 
-No magic here, just normal ES6 template literals using `${}` to introduce logic inside of strings and returning one string or another based on the *loggedIn* state.
+No magic here, just normal ES6 template literals using `${}` to introduce logic inside of strings and based on the *loggedIn* state using a [ternary operator](https://en.wikipedia.org/wiki/%3F:) returning one string or another.
 
 -----
 
@@ -240,7 +235,7 @@ No magic here, just normal ES6 template literals using `${}` to introduce logic 
 
 User authentication is at the same time a common and quite the hard problem to solve. A vast number of applications out there requires some sort of user authentication. With the most common use case being us wanting to save our users data so that only they can edit it. Luckily a common problem means that you can extract that problem from your over all application and simply pull it in as a service.
 
-Once such service is Auth0. It is one of the longest standing and easiest to use authentication service that comes with a bunch of features and starts you off for free for your first users. Using Auth0 you can get started with your App and once it catches on Auth0 will scale with you to thousands of users and advanced features like oAuth secured APIs for third parties to intergrate with your application.
+Once such service is Auth0. It is one of the longest standing and easiest to use authentication service that comes with a bunch of features and starts you off for free for your first users. Using Auth0 you can get started with your App and once it catches on Auth0 will scale with you to thousands of users and advanced features like [OAuth](https://auth0.com/docs/protocols/oauth2) secured APIs for third parties to intergrate with your application.
 
 ### Creating an Auth0 Application
 
@@ -250,16 +245,13 @@ Auth0 organizes projects as "applications". After signing into your account you 
 
 Come up with a name, something simple lie "choo test" will do here. Then select "Single Page Web Application" fro the "application type" and hit create. Next head over to your applications settings and make sure to note down the *Cleint ID* and *Domain* for your application (we are going to need those in a moment.
 
-You also need to setup an Allowed Callback URL: `https://localhost:8080/dashboard´. Simply add it on a blank line in your applications settings ""Allowed Callback URLs" section. Apart from that you can use the default settings, just make sure to save your changes at the bottom of the page.
+You also need to setup an Allowed Callback URL: `https://localhost:8080/dashboard´. Simply add it on a blank line in your applications settings "Allowed Callback URLs" section. Apart from that you can use the default settings, just make sure to save your changes at the bottom of the page.
 
 ### Configuring Auth0 on Choo
 
-Now we are setup with an application in Auth0 we are ready to incorporate this into our Choo App. Luckily we are already fireing some actions when users hit the relevant buttons in our application for login and logout. What we need to do now is:
+Now we are setup with an application in Auth0 we are ready to incorporate this into our Choo App. Luckily we are already fireing some actions when users hit the relevant buttons in our application for login and logout. 
 
-1. Hook Auth0 into the store
-2. Save the login state
-
-To connect Auth0 with our Store we first need to initialize it in our `stores/auth.js`.
+To connect Auth0 with our Store we first need to initialize a WebAuth instanze in our `stores/auth.js`.
 
 ```javascript
 const auth0 = require('auth0-js')
@@ -274,7 +266,7 @@ const webAuth = new auth0.WebAuth({
 
 This is copied from the [quick start guide for JavaScript](https://auth0.com/docs/quickstart/spa/vanillajs). Note however that we replaced the domain and clientID with environment variables. Feel free to hardcode yours here or pass them in via the environment, either way works. I opted for environment variables so that I wouldn't have to push secrets into Git which you should never do! Following that I find it good practice to use environment variables instead.
 
-Next up si the logic to handle our application being called after successful login. For that we are going to add a piece of code at the bottom of our store. Again inspired by the quick start guides Auth0 provides.
+Next up is the logic to handle our application being called after a successful login. For that we are going to add a piece of code at the bottom of our store. Again inspired by the quick start guide Auth0 provides.
 
 ```javascript
 // If we are serverside at this point return ebcause now we will look at authentication on the client.
@@ -320,7 +312,7 @@ webAuth.parseHash((err, authResult) => {
 })
 ```
 
-Here we first check to only do this on the client and not during server side rendering. Then we check if we are already logged in as well as if we are called after a successful login. Now all we need to update are the event handlers for the button clicks that trigger login and logout.
+Here we first check to only do this on the client and not during server side rendering. Then we check if we are already logged in as well as if we are called after a successful login and handle those cases accordingly. Now all we need to update are the event handlers for the button clicks that trigger login and logout.
 
 ```javascript
 emitter.on('auth:startAuthentication', () => webAuth.authorize())
@@ -334,12 +326,12 @@ emitter.on('auth:logout', () => {
 
 Our logic to set the state already moved to the handling of being called after a successful login. And with that we are done. Congratulations, you just secured a Choo based application using Auth0!
 
-Also note how we only had to add some logic inside the store to handle the authentication flows. Our views are totally untouched, they already handle all the states our application can be in. Just the ways in which we reach these states has changed.
+It's amazing how we only had to add some logic inside the store to handle the authentication flows. Our views are totally untouched, they already handle all the states our application can be in. Just the ways in which we reach these states has changed.
 
 ## Conclusion and Next Steps
 
-What a day! We build a little application in Choo greeting our visitors with a personalized identicon and then secured it using Auth0. The tedious task of setting creating an authentication system was taken care of for us and all we had to do is map authentication flows on to our state. 
+What a day! We build a little application in Choo greeting our visitors with a personalized identicon and then authenticated users through Auth0. The tedious task of setting up and creating an authentication system was taken care of for us and all we had to do is map authentication flows on to our state. Don't forget to check the [repo with the final code]((https://github.com/HoverBaum/choo-auth0) and the [demo](https://auth0-secured-choo.netlify.com/).
 
-Moving forward have a look at the [Choo handbook](https://handbook.choo.io/your-first-choo-app/) for a better understanding of the framework. After you decided on the application you want to build your next read will likely be about [Using and API with Auth0](https://auth0.com/docs/quickstart/spa/vanillajs/03-calling-an-api).
+Moving forward have a look at the [Choo handbook](https://handbook.choo.io/your-first-choo-app/) for a better understanding of the framework. After you decided on the application you want to build your next read will likely be about [using and API with Auth0](https://auth0.com/docs/quickstart/spa/vanillajs/03-calling-an-api).
 
-Go build something awesome, don't worry about that authentication stuff anymore!
+Now that we can stop worrying about authentication, go out and build something awesome.
