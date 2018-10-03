@@ -238,14 +238,108 @@ No magic here, just normal ES6 template literals using `${}` to introduce logic 
 
 ## Securing Your Choo App with Auth0
 
-Give a brief explanation on what is Auth0 and why are you going to use it.
+User authentication is at the same time a common and quite the hard problem to solve. A vast number of applications out there requires some sort of user authentication. With the most common use case being us wanting to save our users data so that only they can edit it. Luckily a common problem means that you can extract that problem from your over all application and simply pull it in as a service.
+
+Once such service is Auth0. It is one of the longest standing and easiest to use authentication service that comes with a bunch of features and starts you off for free for your first users. Using Auth0 you can get started with your App and once it catches on Auth0 will scale with you to thousands of users and advanced features like oAuth secured APIs for third parties to intergrate with your application.
 
 ### Creating an Auth0 Application
 
-Describe how to create an Auth0 application on the management dashboard.
+Auth0 organizes projects as "applications". After signing into your account you can create a new application and configure it. This can be done in [your Auth0 Applications](https://manage.auth0.com/#/applications). Simply hit the "+ Create Application" button to get started.
+
+![](create-app.png)
+
+Come up with a name, something simple lie "choo test" will do here. Then select "Single Page Web Application" fro the "application type" and hit create. Next head over to your applications settings and make sure to note down the *Cleint ID* and *Domain* for your application (we are going to need those in a moment.
+
+You also need to setup an Allowed Callback URL: `https://localhost:8080/dashboard´. Simply add it on a blank line in your applications settings ""Allowed Callback URLs" section. Apart from that you can use the default settings, just make sure to save your changes at the bottom of the page.
 
 ### Configuring Auth0 on Choo
 
+Now we are setup with an application in Auth0 we are ready to incorporate this into our Choo App. Luckily we are already fireing some actions when users hit the relevant buttons in our application for login and logout. What we need to do now is:
+
+1. Hook Auth0 into the store
+2. Save the login state
+
+To connect Auth0 with our Store we first need to initialize it in our `stores/auth.js`.
+
+```javascript
+const auth0 = require('auth0-js')
+const webAuth = new auth0.WebAuth({
+  domain: process.env.DOMAIN,
+  clientID: process.env.CLIENT_ID,
+  responseType: 'id_token',
+  scope: 'choo:auth0',
+  redirectUri: 'https://localhost:8080/dashboard'
+})
+```
+
+This is copied from the [quick start guide for JavaScript](https://auth0.com/docs/quickstart/spa/vanillajs). Note however that we replaced the domain and clientID with environment variables. Feel free to hardcode yours here or pass them in via the environment, either way works. I opted for environment variables so that I wouldn't have to push secrets into Git which you should never do! Following that I find it good practice to use environment variables instead.
+
+Next up si the logic to handle our application being called after successful login. For that we are going to add a piece of code at the bottom of our store. Again inspired by the quick start guides Auth0 provides.
+
+```javascript
+// If we are serverside at this point return ebcause now we will look at authentication on the client.
+if (typeof window === 'undefined') return
+
+// Check local storage if we are logged in.
+const storedIdToken = window.localStorage.idToken
+const storedUserId = window.localStorage.userId
+if (storedIdToken && storedUserId) {
+  // Save authentication information to the state.
+  state.auth.loggedIn = true
+  state.auth.idToken = JSON.parse(storedIdToken)
+  state.auth.userId = storedUserId
+  emitter.emit(state.events.RENDER)
+}
+
+// On page load check if there is a hash that we should handle.
+webAuth.parseHash((err, authResult) => {
+  if (authResult) {
+    // Save authentication information to localStorage.
+    window.localStorage.idToken = JSON.stringify(authResult.idToken)
+    // Some values are already strings and don't need to be stringified.
+    window.localStorage.userId = authResult.idTokenPayload.sub
+    console.log(authResult)
+
+    // Now update the store.
+    state.auth.loggedIn = true
+    state.auth.idToken = authResult.idToken
+    state.auth.userId = authResult.idTokenPayload.sub
+    emitter.emit(state.events.RENDER)
+
+    // Remove the hash after using is.
+    emitter.emit(state.events.REPLACESTATE, window.location.pathname)
+  } else if (err) {
+    console.error(err)
+  }
+
+  // Re-direct not logged in users to login page.
+  // In our case login is under '/'.
+  if (!state.auth.loggedIn) {
+    emitter.emit(state.events.REPLACESTATE, '/')
+  }
+})
+```
+
+Here we first check to only do this on the client and not during server side rendering. Then we check if we are already logged in as well as if we are called after a successful login. Now all we need to update are the event handlers for the button clicks that trigger login and logout.
+
+```javascript
+emitter.on('auth:startAuthentication', () => webAuth.authorize())
+
+emitter.on('auth:logout', () => {
+  window.localStorage.clear('token')
+  state.auth.loggedIn = false
+  emitter.emit(state.events.PUSHSTATE, '/')
+})
+```
+
+Our logic to set the state already moved to the handling of being called after a successful login. And with that we are done. Congratulations, you just secured a Choo based application using Auth0!
+
+Also note how we only had to add some logic inside the store to handle the authentication flows. Our views are totally untouched, they already handle all the states our application can be in. Just the ways in which we reach these states has changed.
+
 ## Conclusion and Next Steps
 
-Describe what readers have accomplished throughout this article, add references to more content, and write about where they can go from here.
+What a day! We build a little application in Choo greeting our visitors with a personalized identicon and then secured it using Auth0. The tedious task of setting creating an authentication system was taken care of for us and all we had to do is map authentication flows on to our state. 
+
+Moving forward have a look at the [Choo handbook](https://handbook.choo.io/your-first-choo-app/) for a better understanding of the framework. After you decided on the application you want to build your next read will likely be about [Using and API with Auth0](https://auth0.com/docs/quickstart/spa/vanillajs/03-calling-an-api).
+
+Go build something awesome, don't worry about that authentication stuff anymore!
