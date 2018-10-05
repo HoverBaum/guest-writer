@@ -120,6 +120,7 @@ Note how we are using Tachyon classes to style our application and how we alread
 Next up is a logged in view. Here we want to display an identicon. For that we will use [identicon.js](https://github.com/stewartlord/identicon.js). In this first step we will generate an identicon for a hardcoded value which we will later swap with the users ID. Don't forget to run `npm i --save identicon.js`.
 
 ```javascript
+// views/dashboard.js
 const html = require('choo/html')
 const Identicon = require('identicon.js')
 const TITLE = 'dashboard'
@@ -207,24 +208,28 @@ Login and Logout are now working (though only hardcoded and mocked), clicking th
 This is a great opportunity to add some logic to our main page differentiating between logged in and out users. Depending on `state.auth.loggedIn` we will either display the login button or some text directing the user to their dashboard.
 
 ```javascript
-${!state.auth.loggedIn ? html`
-  <div>
-    <h1>Please login to see the application</h1>
+return html`
+  <body class="lh-copy sans-serif">
+    ${!state.auth.loggedIn ? html`
+      <div>
+        <h1>Please login to see the application</h1>
 
-    <button
-      class="f5 black bg-animate hover-bg-black hover-white inline-flex items-center pa3 ba border-box bg-white pointer"
-      onclick=${() => emit('auth:startAuthentication')}
-    >
-      Login
-    </button>
-  </div>
-` : html`
-  <div>
-    <h1>You are logged in</h1>  
+        <button
+          class="f5 black bg-animate hover-bg-black hover-white inline-flex items-center pa3 ba border-box bg-white pointer"
+          onclick=${() => emit('auth:startAuthentication')}
+        >
+          Login
+        </button>
+      </div>
+    ` : html`
+      <div>
+        <h1>You are logged in</h1>  
 
-    <a href="/dashboard">To your dashboard</a>
-  </div>
-`}
+        <a href="/dashboard">To your dashboard</a>
+      </div>
+    `}
+  </body>
+`
 ```
 
 No magic here, just normal ES6 template literals using `${}` to introduce logic inside of strings and based on the *loggedIn* state using a [ternary operator](https://en.wikipedia.org/wiki/%3F:) returning one string or another.
@@ -251,7 +256,7 @@ You also need to setup an Allowed Callback URL: `https://localhost:8080/dashboar
 
 Now we are setup with an application in Auth0 we are ready to incorporate this into our Choo App. Luckily we are already fireing some actions when users hit the relevant buttons in our application for login and logout. 
 
-To connect Auth0 with our Store we first need to initialize a WebAuth instanze in our `stores/auth.js`.
+To connect Auth0 with our Store we first need to initialize a WebAuth instanze in our `stores/auth.js` after installing it using `npm i --save auth0-js`.
 
 ```javascript
 const auth0 = require('auth0-js')
@@ -266,7 +271,7 @@ const webAuth = new auth0.WebAuth({
 
 This is copied from the [quick start guide for JavaScript](https://auth0.com/docs/quickstart/spa/vanillajs). Note however that we replaced the domain and clientID with environment variables. Feel free to hardcode yours here or pass them in via the environment, either way works. I opted for environment variables so that I wouldn't have to push secrets into Git which you should never do! Following that I find it good practice to use environment variables instead.
 
-Next up is the logic to handle our application being called after a successful login. For that we are going to add a piece of code at the bottom of our store. Again inspired by the quick start guide Auth0 provides.
+Next up is the logic to handle our application being called after a successful login. For that we are going to add a piece of code at the bottom of our store. Again inspired by the quick start guide Auth0 provides. Just put the code at the buttom of your `authState` function.
 
 ```javascript
 // If we are serverside at this point return ebcause now we will look at authentication on the client.
@@ -312,7 +317,7 @@ webAuth.parseHash((err, authResult) => {
 })
 ```
 
-Here we first check to only do this on the client and not during server side rendering. Then we check if we are already logged in as well as if we are called after a successful login and handle those cases accordingly. Now all we need to update are the event handlers for the button clicks that trigger login and logout.
+Here we first check to only do this on the client and not during server side rendering. Then we check if we are already logged in as well as if we are called after a successful login and handle those cases accordingly. Now all we need to update are the event handlers for the button clicks that trigger login and logout. Go ahead and replace our old event handlers with:
 
 ```javascript
 emitter.on('auth:startAuthentication', () => webAuth.authorize())
